@@ -17,6 +17,9 @@ const Authors = (props) => {
   })
 
   const updateAuthor = () => {
+    if (!name || !born) {
+      return
+    }
     editAuthor({ variables: { name, setBornTo: parseInt(born) } })
     setName('')
     setBorn('')
@@ -50,7 +53,7 @@ const Authors = (props) => {
           ))}
         </tbody>
       </table>
-      <h2>Set birthyear</h2>
+      <h2>Set birth year</h2>
       <div>
         <label htmlFor="name">name</label>
         <select id="name" value={name} onChange={({ target }) => setName(target.value)}>
