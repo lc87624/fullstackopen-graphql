@@ -24,7 +24,12 @@ const EditAuthor = ({ authors }) => {
       <h2>Set birthyear</h2>
       <div>
         <label htmlFor="name">name</label>
-        <select id="name" value={name} onChange={({ target }) => setName(target.value)}>
+        <select
+          id="name"
+          name="name"
+          value={name}
+          onChange={({ target }) => setName(target.value)}
+        >
           <option value="">select author</option>
           {authors.map((a) => (
             <option key={a.id} value={a.name}>{a.name}</option>
