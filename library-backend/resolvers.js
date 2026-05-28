@@ -11,6 +11,10 @@ const BOOK_ADDED = "BOOK_ADDED"
 const resolvers = {
   Author: {
     bookCount: async (root) => {
+      if (typeof root.bookCount === "number") {
+        return root.bookCount
+      }
+
       return Book.countDocuments({ author: root.id })
     }
   },
@@ -35,7 +39,28 @@ const resolvers = {
         ...(args.genre && { genres: args.genre })
       }).populate("author")
     },
-    allAuthors: async () => await Author.find({}),
+    allAuthors: async () => {
+      const authors = await Author.find({})
+      const bookCounts = await Book.aggregate([
+        {
+          $group: {
+            _id: "$author",
+            count: { $sum: 1 }
+          }
+        }
+      ])
+
+      const countByAuthorId = bookCounts.reduce((counts, item) => {
+        counts[item._id.toString()] = item.count
+        return counts
+      }, {})
+
+      return authors.map(author => ({
+        ...author.toObject(),
+        id: author.id,
+        bookCount: countByAuthorId[author.id] || 0
+      }))
+    },
     me: async (root, args, context) => {
       return context.currentUser
     }
