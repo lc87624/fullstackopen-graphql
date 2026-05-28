@@ -2,33 +2,44 @@ import { useState } from 'react'
 import Authors from './components/Authors'
 import Books from './components/Books'
 import NewBook from './components/NewBook'
-import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client'
-import { ApolloProvider } from '@apollo/client/react'
-
-const client = new ApolloClient({
-  link: new HttpLink({
-    uri: 'http://localhost:4000',
-  }),
-  cache: new InMemoryCache()
-})
+import LoginForm from './components/LoginForm'
+import Recommendations from './components/Recommendations'
+import { useApolloClient } from '@apollo/client/react'
 
 const App = () => {
   const [page, setPage] = useState('authors')
+  const [ token, setToken ] = useState(localStorage.getItem('library-user-token'))
+  const client = useApolloClient()
+
+  const logout = () => {
+    setToken(null)
+    setPage('authors')
+    localStorage.clear()
+    client.resetStore()
+  }
 
   return (
-    <ApolloProvider client={client}>
+    <div>
       <div>
         <button onClick={() => setPage('authors')}>authors</button>
         <button onClick={() => setPage('books')}>books</button>
-        <button onClick={() => setPage('add')}>add book</button>
+        { !token && <button onClick={() => setPage('login')}>login</button> }
+        { token && <button onClick={() => setPage('add')}>add book</button> }
+        { token && <button onClick={() => setPage('recommendations')}>recommend</button> }
+        { token && <button onClick={logout}>logout</button> }
       </div>
 
-      <Authors show={page === 'authors'} />
+      <Authors show={page === 'authors'} token={token} />
 
       <Books show={page === 'books'} />
 
       <NewBook show={page === 'add'} />
-    </ApolloProvider>
+
+      <Recommendations show={page === 'recommendations'} />
+
+      <LoginForm show={page === 'login'} setToken={setToken} />
+      
+    </div>
   )
 }
 
