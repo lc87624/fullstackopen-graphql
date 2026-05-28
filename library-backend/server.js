@@ -1,37 +1,74 @@
+const { createServer } = require("http")
+const express = require("express")
+const cors = require("cors")
+const { WebSocketServer } = require("ws")
+const { useServer } = require("graphql-ws/use/ws")
+const { makeExecutableSchema } = require("@graphql-tools/schema")
 const { ApolloServer } = require("@apollo/server")
-const { startStandaloneServer } = require("@apollo/server/standalone")
+const { ApolloServerPluginDrainHttpServer } = require("@apollo/server/plugin/drainHttpServer")
+const { expressMiddleware } = require("@as-integrations/express5")
 const typeDefs = require("./schema")
 const resolvers = require("./resolvers")
 const User = require("./models/user")
 const jwt = require("jsonwebtoken")
 
-
 const getUserFromAuthHeader = async (auth) => {
-    if (!auth || !auth.toLowerCase().startsWith("bearer ")) {
-        return null
-    }
+  if (!auth || !auth.toLowerCase().startsWith("bearer ")) {
+    return null
+  }
 
-    const token = auth.substring(7)
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET)
-    return User.findById(decodedToken.id)
+  const token = auth.substring(7)
+  const decodedToken = jwt.verify(token, process.env.JWT_SECRET)
+  return User.findById(decodedToken.id)
 }
 
-const startServer = (port) => {
-    const server = new ApolloServer({
-        typeDefs,
-        resolvers
-    })
+const startServer = async (port) => {
+  const app = express()
+  const httpServer = createServer(app)
+  const schema = makeExecutableSchema({ typeDefs, resolvers })
 
-    startStandaloneServer(server, {
-        listen: { port },
-        context: async ({ req }) => {
-            const auth = req ? req.headers.authorization : null
-            const currentUser = await getUserFromAuthHeader(auth)
-            return { currentUser }
+  const wsServer = new WebSocketServer({
+    server: httpServer,
+    path: "/"
+  })
+
+  const serverCleanup = useServer({ schema }, wsServer)
+
+  const server = new ApolloServer({
+    schema,
+    plugins: [
+      ApolloServerPluginDrainHttpServer({ httpServer }),
+      {
+        async serverWillStart() {
+          return {
+            async drainServer() {
+              await serverCleanup.dispose()
+            }
+          }
         }
-    }).then(({ url }) => {
-        console.log(`Server ready at ${url}`)
+      }
+    ]
+  })
+
+  await server.start()
+
+  app.use(
+    "/",
+    cors(),
+    express.json(),
+    expressMiddleware(server, {
+      context: async ({ req }) => {
+        const auth = req ? req.headers.authorization : null
+        const currentUser = await getUserFromAuthHeader(auth)
+        return { currentUser }
+      }
     })
+  )
+
+  httpServer.listen(port, () => {
+    console.log(`Server ready at http://localhost:${port}/`)
+    console.log(`Subscriptions ready at ws://localhost:${port}/`)
+  })
 }
 
 module.exports = startServer

@@ -3,6 +3,10 @@ const Author = require("./models/author")
 const User = require("./models/user")
 const { GraphQLError } = require("graphql")
 const jwt = require("jsonwebtoken")
+const { PubSub } = require("graphql-subscriptions")
+
+const pubsub = new PubSub()
+const BOOK_ADDED = "BOOK_ADDED"
 
 const resolvers = {
   Author: {
@@ -36,6 +40,11 @@ const resolvers = {
       return context.currentUser
     }
   },
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterableIterator([BOOK_ADDED])
+    }
+  },
   Mutation: {
     addBook: async (root, args, context) => {
       if (!context.currentUser) {
@@ -51,7 +60,9 @@ const resolvers = {
           author = await Author.create({ name: args.author, born: null })
         }
         const newBook = await Book.create({ ...args, author: author.id })
-        return newBook.populate("author")
+        const populatedBook = await newBook.populate("author")
+        pubsub.publish(BOOK_ADDED, { bookAdded: populatedBook })
+        return populatedBook
       } catch (error) {
         console.error(error)
         throw new GraphQLError(error.message, {

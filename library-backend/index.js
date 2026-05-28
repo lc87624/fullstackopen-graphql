@@ -7,7 +7,7 @@ const main = async () => {
   await connectToDatabase(MONGODB_URI)
 
   const PORT = process.env.PORT || 4000
-  startServer(PORT)
+  await startServer(PORT)
 }
 
 main()
