@@ -1,0 +1,40 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - 8080:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+  frontend:
+    build:
+      context: ./library-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_GRAPHQL_HTTP_URL: /graphql
+
+  backend:
+    build:
+      context: ./library-backend
+      dockerfile: Dockerfile
+    environment:
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-library}:${MONGO_ROOT_PASSWORD:-library-secret}@mongo:27017/library?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret}
+      GRAPHQL_PATH: /graphql
+      PORT: 4000
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-library}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-library-secret}
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
