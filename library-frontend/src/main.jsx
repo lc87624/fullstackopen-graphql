@@ -8,6 +8,15 @@ import { ApolloProvider } from '@apollo/client/react'
 import { getMainDefinition } from '@apollo/client/utilities'
 import { createClient } from 'graphql-ws'
 
+const defaultHttpUrl = 'http://localhost:4000'
+const defaultWsUrl = 'ws://localhost:4000'
+const httpUrl = import.meta.env.VITE_GRAPHQL_HTTP_URL || defaultHttpUrl
+const wsUrl =
+  import.meta.env.VITE_GRAPHQL_WS_URL ||
+  (httpUrl.startsWith('/')
+    ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}${httpUrl}`
+    : defaultWsUrl)
+
 const authLink = new SetContextLink((_, { headers }) => {
   const token = localStorage.getItem('library-user-token')
   return {
@@ -19,11 +28,11 @@ const authLink = new SetContextLink((_, { headers }) => {
 })
 
 const httpLink = new HttpLink({
-  uri: 'http://localhost:4000',
+  uri: httpUrl,
 })
 
 const wsLink = new GraphQLWsLink(createClient({
-  url: 'ws://localhost:4000',
+  url: wsUrl,
 }))
 
 const splitLink = split(

@@ -23,13 +23,14 @@ const getUserFromAuthHeader = async (auth) => {
 }
 
 const startServer = async (port) => {
+  const graphqlPath = process.env.GRAPHQL_PATH || "/"
   const app = express()
   const httpServer = createServer(app)
   const schema = makeExecutableSchema({ typeDefs, resolvers })
 
   const wsServer = new WebSocketServer({
     server: httpServer,
-    path: "/"
+    path: graphqlPath
   })
 
   const serverCleanup = useServer({ schema }, wsServer)
@@ -53,7 +54,7 @@ const startServer = async (port) => {
   await server.start()
 
   app.use(
-    "/",
+    graphqlPath,
     cors(),
     express.json(),
     expressMiddleware(server, {
@@ -66,8 +67,8 @@ const startServer = async (port) => {
   )
 
   httpServer.listen(port, () => {
-    console.log(`Server ready at http://localhost:${port}/`)
-    console.log(`Subscriptions ready at ws://localhost:${port}/`)
+    console.log(`Server ready at http://localhost:${port}${graphqlPath}`)
+    console.log(`Subscriptions ready at ws://localhost:${port}${graphqlPath}`)
   })
 }
 
